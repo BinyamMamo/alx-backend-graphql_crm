@@ -1,5 +1,6 @@
 from datetime import datetime
-import requests
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 def log_crm_heartbeat():
     timestamp = datetime.now().strftime('%d/%m/%Y-%H:%M:%S')
@@ -9,12 +10,13 @@ def log_crm_heartbeat():
         log_file.write(message)
     
     try:
-        response = requests.post(
-            'http://localhost:8000/graphql',
-            json={'query': '{ hello }'},
-            headers={'Content-Type': 'application/json'}
-        )
-        if response.status_code == 200:
+        transport = RequestsHTTPTransport(url="http://localhost:8000/graphql")
+        client = Client(transport=transport, fetch_schema_from_transport=True)
+        
+        query = gql('{ hello }')
+        result = client.execute(query)
+        
+        if result.get('hello'):
             print("GraphQL endpoint is responsive")
     except Exception as e:
         print(f"GraphQL endpoint check failed: {e}")

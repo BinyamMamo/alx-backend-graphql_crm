@@ -5,6 +5,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 if [ -f "$PROJECT_DIR/manage.py" ]; then
     cd "$PROJECT_DIR"
+    cwd=$(pwd)
     
     deleted_count=$(python manage.py shell -c "
 from django.utils import timezone

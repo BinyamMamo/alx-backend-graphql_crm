@@ -1,8 +1,12 @@
 #!/bin/bash
 
-cd /root/alx/alx-backend-graphql_crm
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-deleted_count=$(python manage.py shell -c "
+if [ -f "$PROJECT_DIR/manage.py" ]; then
+    cd "$PROJECT_DIR"
+    
+    deleted_count=$(python manage.py shell -c "
 from django.utils import timezone
 from datetime import timedelta
 from crm.models import Customer
@@ -13,5 +17,8 @@ count = inactive_customers.count()
 inactive_customers.delete()
 print(count)
 ")
-
-echo "$(date): Deleted $deleted_count inactive customers" >> /tmp/customer_cleanup_log.txt
+    
+    echo "$(date): Deleted $deleted_count inactive customers" >> /tmp/customer_cleanup_log.txt
+else
+    echo "$(date): Error - manage.py not found in $PROJECT_DIR" >> /tmp/customer_cleanup_log.txt
+fi

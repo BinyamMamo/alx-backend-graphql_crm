@@ -1,71 +1,56 @@
-from datetime import datetime
-
-try:
-    from gql import gql, Client
-    from gql.transport.requests import RequestsHTTPTransport
-    GQL_AVAILABLE = True
-except ImportError:
-    GQL_AVAILABLE = False
-
-def log_crm_heartbeat():
-    timestamp = datetime.now().strftime('%d/%m/%Y-%H:%M:%S')
-    message = f"{timestamp} CRM is alive\n"
-    
-    with open('/tmp/crm_heartbeat_log.txt', 'a') as log_file:
-        log_file.write(message)
-    
-    try:
-        if GQL_AVAILABLE:
-            transport = RequestsHTTPTransport(url="http://localhost:8000/graphql")
-            client = Client(transport=transport)
-            
-            query = gql('{ hello }')
-            result = client.execute(query)
-            
-            if result.get('hello'):
-                print("GraphQL endpoint is responsive")
-        else:
-            print("GQL library not available")
-    except Exception as e:
-        print(f"GraphQL endpoint check failed: {e}")
+import requests
+import datetime
+import json
 
 def update_low_stock():
-    if not GQL_AVAILABLE:
-        print("GQL library not available")
-        return
-        
-    mutation = gql("""
-    mutation UpdateLowStockProducts {
-        updateLowStockProducts {
-            success
-            message
-            updatedProducts {
-                id
-                name
-                stock
+    graphql_endpoint = 'http://localhost:8000/graphql/'  # Adjust if your GraphQL endpoint is different
+    query = """
+        mutation {
+            updateLowStockProducts {
+                success
+                message
+                updatedProducts {
+                    id
+                    name
+                    stock
+                }
             }
         }
-    }
-    """)
-    
+    """
+    headers = {'Content-Type': 'application/json'}
+
     try:
-        transport = RequestsHTTPTransport(url="http://localhost:8000/graphql")
-        client = Client(transport=transport)
-        
-        result = client.execute(mutation)
-        
-        if result.get('updateLowStockProducts', {}).get('success'):
-            updated_products = result.get('updateLowStockProducts', {}).get('updatedProducts', [])
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            with open('/tmp/low_stock_updates_log.txt', 'a') as log_file:
-                for product in updated_products:
-                    log_entry = f"{timestamp}: Updated {product['name']} - New stock: {product['stock']}\n"
-                    log_file.write(log_entry)
-            
-            print(f"Updated {len(updated_products)} low stock products")
-        else:
-            print("Failed to update low stock products")
-            
+        response = requests.post(graphql_endpoint, headers=headers, json={'query': query})
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        data = response.json()
+
+        log_file_path = '/tmp/low_stock_updates_log.txt'
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        with open(log_file_path, 'a') as log_file:
+            log_file.write(f"--- Logged on: {timestamp} ---\n")
+            if data and 'data' in data and 'updateLowStockProducts' in data['data']:
+                mutation_result = data['data']['updateLowStockProducts']
+                log_file.write(f"Success: {mutation_result['success']}\n")
+                log_file.write(f"Message: {mutation_result['message']}\n")
+
+                if mutation_result['updatedProducts']:
+                    log_file.write("Updated Products:\n")
+                    for product in mutation_result['updatedProducts']:
+                        log_file.write(f"  - Name: {product['name']}, New Stock: {product['stock']}\n")
+                else:
+                    log_file.write("No products updated.\n")
+            else:
+                log_file.write(f"Error or unexpected response from GraphQL: {json.dumps(data)}\n")
+            log_file.write("\n")
+
+    except requests.exceptions.RequestException as e:
+        with open('/tmp/low_stock_updates_log.txt', 'a') as log_file:
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            log_file.write(f"--- Logged on: {timestamp} ---\n")
+            log_file.write(f"Network or GraphQL request error: {e}\n\n")
     except Exception as e:
-        print(f"Error updating low stock products: {e}")
+        with open('/tmp/low_stock_updates_log.txt', 'a') as log_file:
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            log_file.write(f"--- Logged on: {timestamp} ---\n")
+            log_file.write(f"An unexpected error occurred: {e}\n\n")

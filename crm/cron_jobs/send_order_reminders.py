@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 
-from gql import gql, Client
-from gql.transport.requests import RequestsHTTPTransport
 from datetime import datetime, timedelta
 
+try:
+    from gql import gql, Client
+    from gql.transport.requests import RequestsHTTPTransport
+    GQL_AVAILABLE = True
+except ImportError:
+    GQL_AVAILABLE = False
+
 def send_order_reminders():
-    transport = RequestsHTTPTransport(url="http://localhost:8000/graphql")
-    client = Client(transport=transport, fetch_schema_from_transport=True)
-    
+    if not GQL_AVAILABLE:
+        print("GQL library not available")
+        return
+        
     query = gql("""
     query GetPendingOrders($orderDateGte: Date) {
         orders(orderDateGte: $orderDateGte) {
@@ -21,6 +27,9 @@ def send_order_reminders():
     """)
     
     try:
+        transport = RequestsHTTPTransport(url="http://localhost:8000/graphql")
+        client = Client(transport=transport)
+        
         seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         result = client.execute(query, variable_values={"orderDateGte": seven_days_ago})
         

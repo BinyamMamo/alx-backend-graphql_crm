@@ -1,6 +1,13 @@
 import os
 from pathlib import Path
 
+try:
+    from celery.schedules import crontab
+    CELERY_AVAILABLE = True
+except ImportError:
+    CELERY_AVAILABLE = False
+    crontab = None
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-your-secret-key-here'
@@ -93,18 +100,17 @@ GRAPHENE = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = TIME_ZONE
+if CELERY_AVAILABLE:
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = TIME_ZONE
 
-from celery.schedules import crontab
-
-CELERY_BEAT_SCHEDULE = {
-    'generate-crm-report': {
-        'task': 'crm.tasks.generate_crm_report',
-        'schedule': crontab(day_of_week='mon', hour=6, minute=0),
-    },
-}
+    CELERY_BEAT_SCHEDULE = {
+        'generate-crm-report': {
+            'task': 'crm.tasks.generate_crm_report',
+            'schedule': crontab(day_of_week='mon', hour=6, minute=0),
+        },
+    }

@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'graphene_django',
     'django_crontab',
     'django_celery_beat',
+    'django_filters',
     'crm',
 ]
 
@@ -96,7 +97,7 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 GRAPHENE = {
-    'SCHEMA': 'crm.schema.schema'
+    'SCHEMA': 'schema.schema'
 }
 
 # Celery Configuration
